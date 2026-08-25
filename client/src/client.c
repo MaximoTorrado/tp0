@@ -51,7 +51,10 @@ int main(void)
    conexion = crear_conexion(ip, puerto);
 
    //todo Enviamos al servidor el valor de CLAVE como mensaje
-
+   //! 3) aca falta usar "enviar_mensaje" que ya esta implementada de antes, con "valor" que es lo que leimos del config en la etapa 2 y "conexion" que es el "socket_cliente"
+   // esto no es porque si, en el main el "socket_cliente" ya paso por "connect()" entonces no es un socket suelto, es uno con la CONEXION al servidor YA ESTABLECIDA 
+   enviar_mensaje(leido, conexion);
+ 
    //todo Armamos y enviamos el paquete
    paquete(conexion);
 
@@ -96,22 +99,24 @@ void leer_consola(t_log* logger)
 
    while(1) {
       //todo La primera te la dejo de yapa
-      leido = readline("> ");
+      leido = readline("> "); // basicamente muy parecido a lo que vinimos haciendo, pero la diferencia ahora es que "readline("> ")" va leyendo de a lineas completas hasta el enter, entonces queremos que devuelva todo lo que escribimos
 
       //todo El resto, las vamos leyendo y logueando hasta recibir un string vacío
+      // segun documentacion y anotado en notion, si recibe un EOF (si el usuario cierra la terminal, un pipe que se cerro sin \n) devuelve NULL, pero eso esta bien y no hizo ningun malloc (no reservo memoria), entonces solo cortamos y no liberamos nada solo cortamos el loop del while  
       if (leido == NULL) {
          break;
       }
 
+      // en caso de que se reciba un "" entonces al ser un string vacio si se hace un malloc (se reserva memoria), pero entonces es necesario liberarla (porque a diferencia de las de las commons aca si tenemos que liberar, las otras nos prestaban un puntero que ella misma liberaba), y cortamos el loop 
       if(string_is_empty(leido)) {
          free(leido);
          break;
       }
 
-      log_info(logger, "%s", leido);
+      log_info(logger, "%s", leido);  //si ninguno de los 2 casos anteriores pasa y terminamos de guardar en "leido" las lineas de la consola, entonces podemos guardarlo en el log, especificamente en las instancia de uno que creamos anteriormente "logger"
       
       //todo ¡No te olvides de liberar las lineas antes de regresar!
-      free(leido);
+      free(leido);  // y el mismo despues de guardar en el logger tenemos que liberar 
    }
 }
 

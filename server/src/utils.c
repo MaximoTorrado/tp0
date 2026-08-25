@@ -2,42 +2,58 @@
 
 t_log* logger;
 
+//! 1) primer paso, iniciar el servidor, para eso creamos el file descriptor osea el socket con un "formulario"
 int iniciar_servidor(void)
 {
-   // Quitar esta línea cuando hayamos terminado de implementar la funcion
-   assert(!"no implementado!");
+   // a) primero creamos una instancia del formulario "hints" y el puntero que guardara el resultado del formulario "servinfo"
+   struct addrinfo hints, *servinfo;
 
-   int socket_servidor;
+   // aca arrancamos las propiedades que queremos en el formulario
+   memset(&hints, 0, sizeof(hints));  // obligatorio, el formulario al ser una variable local tiene que setearse en 0 porque puede almacenar basura del stack  
+   hints.ai_family = AF_INET;         // IPv4  
+   hints.ai_socktype = SOCK_STREAM;   // TCP 
+   hints.ai_flags = AI_PASSIVE;       // para que escuche de todos lados 
 
-   struct addrinfo hints, *servinfo, *p;
-
-   memset(&hints, 0, sizeof(hints));
-   hints.ai_family = AF_INET;
-   hints.ai_socktype = SOCK_STREAM;
-   hints.ai_flags = AI_PASSIVE;
-
+   // b) pido la traduccion, el resultado termina siendo apuntado por el puntero "servinfo", dentro tendra la estructura binaria necesaria para crear el socket y saber a donde conectarse 
+   // NULL: la IP, significa mi propia maquina. 
+   // PUERTO: puerto, especificamente una constante fija que tenemos en "utils.h" del servidor (NO CONFUNDIR con el valor asociado a la key en "cliente.config" eso es del CLIENTE aca estamos en SV). 
+   // hints: el formulario de preferencias. 
+   // servinfo: donde apuntamos el resultado 
    getaddrinfo(NULL, PUERTO, &hints, &servinfo);
 
-   // Creamos el socket de escucha del servidor
+   // c) uso el resultado para crear el socket, como el puntero "servinfo" apunta a la estructura binaria con todas las preferencias que guardamos en el formulario, ahora vamos a pasarle al file descriptor todas las 2 preferencias guardadas MENOS la flag, esa no va, pero protocol si ahi mediante la funcion "socket()" y terminaremos de guardar el socket en la variable "socket_servidor"
+   // recordemos que "servinfo" es un puntero, entonces con la azucar sintactica "->" puedo ingresar a sus campos, aca estamos haciendo eso 
+   int socket_servidor = socket(servinfo -> ai_family, servinfo -> ai_socktype, servinfo -> ai_protocol); 
 
-   // Asociamos el socket a un puerto
+   // OPCIONAL) explicado en notion
+   int activado = 1;
+   setsockopt(socket_servidor, SOL_SOCKET, SO_REUSEADDR, &activado, sizeof(activado));
+   
+   // d) sociamos el socket_servidor creado anteriormente a un puerto
+   // "ai_addr" y "ai_addrlen" nos lo devuelve la funcion "getaddrinfo()" en base a los 2 primeros parametros, lo usamos para conectar el socket a un puerto 
+   bind(socket_servidor, servinfo -> ai_addr, servinfo -> ai_addrlen);
 
-   // Escuchamos las conexiones entrantes
+   // e) ponemos el socket_servidor creado anteriormente a escuchar las conexiones entrantes
+   // SOMAXCONN, el segundo parametro de "listen()" define el tamaño de la cola de espera o "backlog", aca especificamente es una constante que vale el maximo que permite el sistema 
+   listen(socket_servidor, SOMAXCONN);
 
+   // f) liberamos memoria, el puntero usado hasta ahora que apuntaba a la estructura binaria que nos sirvio para armar el socket debemos liberarlo porque es nuestro 
    freeaddrinfo(servinfo);
-   log_trace(logger, "Listo para escuchar a mi cliente");
 
-   return socket_servidor;
+   log_trace(logger, "Listo para escuchar a mi cliente");  // mensaje opcional para dar conocimiento que estamos en condiciones de escuchar a los clientes 
+
+   // g) devolvemos finalmente el socket creado con sus especificaciones 
+   return socket_servidor;  
 }
 
+//! 2) aceptamos al cliente que se quiere conectar y lo hacemos esperar 
 int esperar_cliente(int socket_servidor)
 {
-   // Quitar esta línea cuando hayamos terminado de implementar la funcion
-   assert(!"no implementado!");
+   // aceptamos un nuevo cliente y guardamos su "extremo" para comunicarnos con el mediante la variable "socket_cliente" (NO confundir con el socket_cliente que luego crearemos en los "utils.c" del cliente, este nos servira para comunicarnos con el, el otro es propio del cliente y se conectara con el servidor) => lo usaremos para "recv()" y "send()"
+   // "accept(...)" los ultimos 2 parametros son opcionales, nos sirve para ver a quien aceptamos, pero aca no es necesario. DEVUELVE un fd NUEVO y BLOQUEA el proceso hasta que llega un cliente
+   int socket_cliente = accept(socket_servidor, NULL, NULL);
 
-   // Aceptamos un nuevo cliente
-   int socket_cliente;
-   log_info(logger, "Se conecto un cliente!");
+   log_info(logger, "Se conecto un cliente!");  // bueno y guardamos en el log que se conecto un cliente con ese mensaje 
 
    return socket_cliente;
 }
