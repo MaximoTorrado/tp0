@@ -53,7 +53,7 @@ int main(void)
    //todo Enviamos al servidor el valor de CLAVE como mensaje
    //! 3) aca falta usar "enviar_mensaje" que ya esta implementada de antes, con "valor" que es lo que leimos del config en la etapa 2 y "conexion" que es el "socket_cliente"
    // esto no es porque si, en el main el "socket_cliente" ya paso por "connect()" entonces no es un socket suelto, es uno con la CONEXION al servidor YA ESTABLECIDA 
-   enviar_mensaje(leido, conexion);
+   enviar_mensaje(valor, conexion);
  
    //todo Armamos y enviamos el paquete
    paquete(conexion);
@@ -120,22 +120,40 @@ void leer_consola(t_log* logger)
    }
 }
 
+//! 4) terminamos de definir "paquete()", la misma tiene la misma logica que denotamos del lado del server para la consola interactiva, aca hacemos lo mismo y finalmente empaquetamos 
 void paquete(int conexion)
 {
    //todo Ahora toca lo divertido!
-   char* leido;
-   t_paquete* paquete;
+   char* leido;  // "leido" es un puntero, por lo cual tendremos que liberar al terminar y tambien liberar en caso de ser empty (caso de NULL no porque admitia "" la funcion "readline()") 
+   t_paquete* paquete = crear_paquete();
 
    //todo Leemos y esta vez agregamos las lineas al paquete
+   while(1) {
+      leido = readline("> ");
 
+      if (leido == NULL) {
+         break;
+      }
+
+      if (string_is_empty(leido)) {
+         free(leido);
+         break;
+      }
+      
+      agregar_a_paquete(paquete, leido, strlen(leido) + 1);  // hacemos uso de la funcion de la common "agregar_a_paquete()" ya teniendo en "leido" las lineas leidas de la consola, se agrega uno mas porque no toma en cuenta el centinela del caracter vacio en ASCII
+
+      free(leido); // como siempre limpiamos la memoria del puntero que apunta a las lineas de la consola 
+   }
 
    //todo ¡No te olvides de liberar las líneas y el paquete antes de regresar!
-
+   enviar_paquete(paquete, conexion); 
+   eliminar_paquete(paquete); 
 }
 
 void terminar_programa(int conexion, t_log* logger, t_config* config)
 {
    //todo Y por ultimo, hay que liberar lo que utilizamos (conexion, log y config) con las funciones de las commons y del TP mencionadas en el enunciado
    log_destroy(logger);  //! LOGGER, unicamente uso de esta funcion de las commons para liberar los logs, con el mismo que vinimos trabajando hasta ahora
-   config_destroy(config); //! CONFIG, libero los config 
+   config_destroy(config); //! CONFIG, libero los config con esta de las common
+   liberar_conexion(conexion); //! CONEXION, libero los conexion (socket_cliente luego de conectarse con el servidor) con esta funcion de las common
 }
